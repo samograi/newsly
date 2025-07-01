@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newsly - Newsletter Reader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📰 Newsly</h1>
+            <p>Twój czytnik newsletterów z Google Sheets</p>
+        </div>
+
+        <div id="setupSection" class="setup-card">
+            <h2>Wklej link do arkusza Google Sheets</h2>
+            <input type="text" id="urlInput" class="url-input" placeholder="https://docs.google.com/spreadsheets/d/e/2PACX-...">
+            <br>
+            <button onclick="loadNewsletter()" class="btn">Załaduj Newsletter</button>
+            
+            <div class="redirect-notice">
+                <span class="icon">🔗</span>
+                <strong>Ważne:</strong> Po wklejeniu linku zostaniesz przekierowany na stronę swojego newslettera. 
+                Zapisz ten link w zakładkach - nie będziesz musiał za każdym razem wklejać URL do arkusza!
+            </div>
+
+
+            <div class="instructions">
+                <h3>🔧 Jak udostępnić arkusz Google Sheets:</h3>
+                <ol>
+                    <li><strong>Otwórz swój arkusz</strong> w Google Sheets</li>
+                    <li><strong>Kliknij "Plik"</strong> w menu górnym</li>
+                    <li><strong>Wybierz "Udostępnij"</strong> → "Publikuj w internecie"</li>
+                    <li><strong>W pierwszym menu</strong> wybierz konkretny arkusz lub "Cały dokument"</li>
+                    <li><strong>W drugim menu</strong> wybierz "Microsoft Excel (.xlsx)"</li>
+                    <li><strong>Kliknij "Publikuj"</strong> i skopiuj wygenerowany link</li>
+                    <li><strong>Wklej link</strong> w pole powyżej</li>
+                </ol>
+                <p><strong>💡 Uwaga:</strong> Twój arkusz powinien mieć dwie kolumny: <code>url</code> i <code>content</code></p>
+            </div>
+        </div>
+
+
+
+        <div id="loadingSection" class="loading hidden">
+            Ładowanie newslettera...
+        </div>
+
+        <div id="errorSection" class="error hidden"></div>
+
+        <div id="newsletterSection" class="newsletter-container hidden">
+            <h2>📬 Najnowsze wpisy z newslettera</h2>
+            <div id="newsletterContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Sprawdź czy jest ID w parametrach URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sheetId = urlParams.get('id');
+
+        if (sheetId) {
+            // Jeśli jest ID, automatycznie załaduj newsletter
+            const fullUrl = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?output=xlsx`;
+            document.getElementById('urlInput').value = fullUrl;
+            loadNewsletterDirect(fullUrl);
+        }
+
+        function showSection(sectionId) {
+            // Ukryj wszystkie sekcje
+            document.getElementById('setupSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('errorSection').classList.add('hidden');
+            document.getElementById('newsletterSection').classList.add('hidden');
+            
+            // Pokaż wybraną sekcję
+            document.getElementById(sectionId).classList.remove('hidden');
+        }
+
+        async function copyToClipboard(text, buttonElement) {
+            try {
+                await navigator.clipboard.writeText(text);
+                
+                // Zmień tekst i styl przycisku na chwilę
+                const originalText = buttonElement.textContent;
+                buttonElement.textContent = '✓ Skopiowane!';
+                buttonElement.classList.add('copied');
+                
+                // Przywróć oryginalny tekst po 2 sekundach
+                setTimeout(() => {
+                    buttonElement.textContent = originalText;
+                    buttonElement.classList.remove('copied');
+                }, 2000);
+                
+            } catch (err) {
+                console.error('Nie można skopiować tekstu: ', err);
+                
+                // Fallback dla starszych przeglądarek
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    buttonElement.textContent = '✓ Skopiowane!';
+                    buttonElement.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        buttonElement.textContent = '📋 Kopiuj';
+                        buttonElement.classList.remove('copied');
+                    }, 2000);
+                } catch (fallbackErr) {
+                    console.error('Fallback kopiowania również nie działa: ', fallbackErr);
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('errorSection').textContent = message;
+            showSection('errorSection');
+            // Po 3 sekundach pokaż z powrotem setup
+            setTimeout(() => {
+                showSection('setupSection');
+            }, 3000);
+        }
+
+        function extractSheetId(url) {
+            // Próbuj wyodrębnić ID z różnych formatów URL Google Sheets
+            const patterns = [
+                /\/spreadsheets\/d\/e\/([^\/]+)/,  // Format z /d/e/
+                /\/spreadsheets\/d\/([^\/]+)/,     // Standardowy format /d/
+                /\/spreadsheets\/.*[?&]key=([^&]+)/, // Starszy format z key=
+                /\/spreadsheets\/.*\/edit.*#gid=(\d+)/ // Format z gid
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) {
+                    return match[1];
+                }
+            }
+            
+            return null;
+        }
+
+        async function loadNewsletter() {
+            const url = document.getElementById('urlInput').value.trim();
+            
+            if (!url) {
+                showError('Proszę wklej link do arkusza Google Sheets');
+                return;
+            }
+
+            if (!url.includes('docs.google.com/spreadsheets')) {
+                showError('Proszę podaj prawidłowy link do Google Sheets');
+                return;
+            }
+
+            // Sprawdź czy już jesteśmy na stronie z parametrem ID
+            const currentParams = new URLSearchParams(window.location.search);
+            const currentId = currentParams.get('id');
+            
+            // Jeśli nie ma parametru ID w URL, spróbuj wyodrębnić ID i przekieruj
+            if (!currentId) {
+                const sheetId = extractSheetId(url);
+                if (sheetId) {
+                    // Przekieruj na stronę z parametrem ID
+                    window.location.href = `${window.location.pathname}?id=${sheetId}`;
+                    return;
+                }
+            }
+
+            // Jeśli już jesteśmy na stronie z ID lub nie można wyodrębnić ID, 
+            // sprawdź czy to jest link publikowany
+            if (!url.includes('pub?output=xlsx')) {
+                showError('Link musi być w formacie publikowanego XLSX z Google Sheets');
+                return;
+            }
+
+            // Załaduj bezpośrednio
+            loadNewsletterDirect(url);
+        }
+
+        async function loadNewsletterDirect(url) {
+
+            showSection('loadingSection');
+
+            try {
+                // Lista proxy CORS do wypróbowania
+                const corsProxies = [
+                    'https://api.allorigins.win/raw?url=',
+                    'https://corsproxy.io/?',
+                    'https://cors.sh/',
+                    'https://cors-anywhere.herokuapp.com/'
+                ];
+
+                let response = null;
+                let lastError = null;
+
+                // Wypróbuj każdy proxy po kolei
+                for (const proxy of corsProxies) {
+                    try {
+                        const requestUrl = proxy + encodeURIComponent(url);
+                        console.log(`Próbuję pobrać z: ${requestUrl}`);
+                        
+                        response = await fetch(requestUrl);
+                        
+                        if (response.ok) {
+                            console.log(`Sukces z proxy: ${proxy || 'bezpośrednio'}`);
+                            break;
+                        } else {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                    } catch (error) {
+                        console.log(`Błąd z proxy ${proxy || 'bezpośrednio'}: ${error.message}`);
+                        lastError = error;
+                        response = null;
+                        continue;
+                    }
+                }
+
+                if (!response || !response.ok) {
+                    throw new Error('Nie można pobrać danych z arkusza. Spróbuj otworzyć link bezpośrednio w przeglądarce.');
+                }
+
+                // Pobierz dane jako ArrayBuffer dla XLSX
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // Parsuj XLSX
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                
+                // Weź pierwszy arkusz
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Konwertuj do JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                console.log('Dane z XLSX:', jsonData);
+                
+                if (jsonData.length < 2) {
+                    throw new Error('Arkusz jest pusty lub ma nieprawidłowy format');
+                }
+
+                // Pierwsza linia to nagłówki
+                const headers = jsonData[0].map(h => String(h).trim().toLowerCase());
+                
+                console.log('Nagłówki:', headers);
+                
+                // Sprawdź czy są odpowiednie kolumny
+                const urlIndex = headers.findIndex(h => h === 'url');
+                const contentIndex = headers.findIndex(h => h === 'content');
+                
+                if (urlIndex === -1 || contentIndex === -1) {
+                    throw new Error('Arkusz musi mieć kolumny "url" i "content"');
+                }
+
+                console.log('URL index:', urlIndex, 'Content index:', contentIndex);
+
+                // Parsuj dane (pomiń pierwszy wiersz z nagłówkami)
+                const data = [];
+                
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    console.log(`Przetwarzanie wiersza ${i}:`, row);
+                    
+                    const url = row[urlIndex] ? String(row[urlIndex]).trim() : '';
+                    const content = row[contentIndex] ? String(row[contentIndex]).trim() : '';
+                    
+                    if (url && content) {
+                        console.log(`Dodaję wpis ${i}:`, { url, content });
+                        data.push({ url, content });
+                    } else {
+                        console.log(`Pomijam wpis ${i} - brak URL lub content:`, { url, content });
+                    }
+                }
+                
+                console.log('Wszystkie dane:', data);
+                console.log('Liczba wpisów:', data.length);
+
+                // Weź ostatnie 20 wpisów
+                const recentEntries = data.slice(-20).reverse();
+                
+                if (recentEntries.length === 0) {
+                    throw new Error('Brak wpisów w arkuszu');
+                }
+
+                displayNewsletter(recentEntries);
+
+            } catch (error) {
+                console.error('Błąd:', error);
+                
+                let errorMessage = `Błąd: ${error.message}`;
+                
+                if (error.message.includes('CORS') || error.message.includes('403') || error.message.includes('Forbidden')) {
+                    errorMessage += `Błąd CORS`;
+                }
+                
+                showError(errorMessage);
+            }
+        }
+
+        function displayNewsletter(entries) {
+            const container = document.getElementById('newsletterContent');
+            container.innerHTML = '';
+
+            entries.forEach((entry, index) => {
+                const item = document.createElement('div');
+                item.className = 'newsletter-item';
+                
+                item.innerHTML = `
+                    <div class="newsletter-content">${escapeHtml(entry.content)}</div>
+                    <div class="newsletter-buttons">
+                        <a href="${escapeHtml(entry.url)}" target="_blank" class="newsletter-url">
+                            🔗 Czytaj więcej
+                        </a>
+                        <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(entry.content).replace(/'/g, "\\'")}', this)">
+                            📋 Kopiuj
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(item);
+            });
+
+            showSection('newsletterSection');
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Dodaj event listener dla Enter w polu input
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                loadNewsletter();
+            }
+        });
+    </script>
+</body>
+</html>

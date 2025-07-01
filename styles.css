@@ -1,0 +1,241 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+    color: white;
+}
+
+.header h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.header p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.setup-card, .newsletter-container {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.newsletter-container h2 {
+    margin-bottom: 25px;
+}
+
+.setup-card {
+    text-align: center;
+}
+
+.setup-card h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+}
+
+.url-input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 1rem;
+    margin-bottom: 20px;
+    transition: border-color 0.3s ease;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.url-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.redirect-notice {
+    margin: 20px 0;
+    padding: 15px;
+    background: #e3f2fd;
+    border-radius: 10px;
+    border-left: 4px solid #2196f3;
+    color: #0d47a1;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.redirect-notice .icon {
+    font-size: 1.2em;
+    margin-right: 8px;
+}
+
+.instructions {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8f9ff;
+    border-radius: 10px;
+    border-left: 4px solid #667eea;
+}
+
+.instructions h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.instructions ol {
+    margin-left: 20px;
+}
+
+.instructions li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.newsletter-item {
+    background: #f8f9ff;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-left: 4px solid #667eea;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.newsletter-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.newsletter-content {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.newsletter-buttons {
+    text-align: right;
+}
+
+.newsletter-url {
+    display: inline-block;
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 15px;
+    background: white;
+    border-radius: 20px;
+    border: 2px solid #667eea;
+    transition: all 0.3s ease;
+}
+
+.newsletter-url:hover {
+    background: #667eea;
+    color: white;
+}
+
+.copy-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: all 0.3s ease;
+}
+
+.copy-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.copy-btn.copied {
+    background: #17a2b8;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #667eea;
+}
+
+.loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #667eea;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.error {
+    background: #ffe6e6;
+    color: #cc0000;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border-left: 4px solid #cc0000;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .header h1 {
+        font-size: 2rem;
+    }
+    
+    .setup-card, .newsletter-container {
+        padding: 20px;
+    }
+}
